@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vive Wall - Generador de Fondos de Pantalla</title>
+<!-- Open Graph Tags (Optimización para Facebook y Redes Sociales) -->
+<meta property="og:title" content="Vive Wall: Generador de Fondos con IA">
+<meta property="og:description" content="Crea fondos de pantalla 9:16 únicos para tu móvil usando Inteligencia Artificial. ¡Remezcla tus creaciones!">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.google.com/search?q=https://VIVE-WALL.TU-DOMINIO.com"> <!-- ¡Asegúrate de cambiar esto a tu URL real! -->
+<meta property="og:image" content="https://www.google.com/search?q=https://placehold.co/1200x630/5B21B6/ffffff%3Ftext%3DVIVE%2BWALL%2BAI%2BGENERATOR">
+
+<!-- PWA / Optimización Móvil para "Añadir a Pantalla de Inicio" -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5B21B6">
+<!-- Icono Básico (Se requiere un icono real para producción, aquí usamos un placeholder) -->
+<link rel="icon" type="image/png" href="https://placehold.co/192x192/5B21B6/ffffff?text=VW">
+
+<!-- Incluyendo Tailwind CSS para un diseño limpio y responsive -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* Configuración personalizada de Tailwind y fuentes */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    :root {
+        --primary-color: #5B21B6; /* Violet-700 */
+        --secondary-color: #8B5CF6; /* Violet-500 */
+        --text-color: #1F2937; /* Gray-800 */
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #F3F4F6; /* Gray-100 */
+        color: var(--text-color);
+    }
+
+    .gradient-bg {
+        background-image: linear-gradient(to bottom right, var(--secondary-color), var(--primary-color));
+    }
+
+    /* Estilos específicos para la vista de fondo de pantalla */
+    .wallpaper-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .wallpaper-item {
+        aspect-ratio: 9 / 16; /* Forzado al formato de móvil */
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    
+    .wallpaper-item:hover {
+        transform: scale(1.02);
+    }
+
+    /* Modal de pantalla completa */
+    .fullscreen-modal {
+        background-color: rgba(0, 0, 0, 0.95);
+        z-index: 50;
+    }
+</style>
+
+
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+<!-- Encabezado y Título -->
+<header class="w-full max-w-lg mb-6 text-center">
+    <h1 class="text-3xl font-extrabold gradient-bg text-transparent bg-clip-text">
+        🖼️ Vive Wall
+    </h1>
+    <p class="text-gray-600 mt-1">Genera fondos de pantalla móviles (9:16) con IA.</p>
+</header>
+
+<!-- Área de Entrada de Prompt -->
+<main class="w-full max-w-lg bg-white p-6 rounded-xl shadow-2xl mb-8">
+    <div class="space-y-4">
+        <textarea id="prompt-input"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-violet-500 focus:border-violet-500 transition duration-150"
+                  rows="3"
+                  placeholder='Describe el estilo (ej: "lo-fi cyberpunk lluvioso, arte digital, tonos neón violeta")'></textarea>
+        
+        <button id="generate-button"
+                class="w-full py-3 px-4 text-white font-semibold rounded-lg shadow-lg transition duration-300 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center">
+            Generar 4 Variaciones
+        </button>
+    </div>
+</main>
+
+<!-- Área de Resultados y Loader -->
+<section id="results-section" class="w-full max-w-2xl">
+    
+    <!-- Indicador de Carga -->
+    <div id="loader" class="hidden flex flex-col items-center justify-center py-10">
+        <svg class="animate-spin h-8 w-8 text-violet-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-lg text-gray-700 font-medium">Generando fondos de pantalla...</p>
+    </div>
+    
+    <!-- Contenedor de Imágenes -->
+    <div id="image-container" class="wallpaper-grid hidden mx-auto max-w-lg">
+        <!-- Las imágenes generadas se insertarán aquí -->
+    </div>
+
+    <!-- Mensajes de Error/Información -->
+    <div id="message-box" class="text-center p-4 mt-6 text-gray-500 italic">
+        Describe el fondo de pantalla que deseas y haz clic en "Generar 4 Variaciones".
+    </div>
+
+</section>
+
+<!-- Modal de Pantalla Completa -->
+<div id="fullscreen-modal" class="fullscreen-modal fixed inset-0 hidden items-center justify-center p-4 transition-opacity duration-300" onclick="closeModal(event)">
+    <div class="relative max-w-sm max-h-full mx-auto" onclick="event.stopPropagation()">
+        <img id="modal-image" src="" alt="Fondo de pantalla a pantalla completa" class="max-w-full max-h-full rounded-xl shadow-2xl wallpaper-item">
+        
+        <div class="flex space-x-4 mt-4 justify-center">
+            
+            <button id="download-button"
+                    class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-full transition shadow-lg flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L10 11.586l2.293-2.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                <span>Descargar</span>
+            </button>
+            
+            <button id="remix-button"
+                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-full transition shadow-lg flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4zm11 10V7a1 1 0 00-1-1h-4a1 1 0 00-1 1v6h4a1 1 0 001 1v-2h2zm-2 2a1 1 0 00-1 1v.5a1 1 0 001 1h4a1 1 0 001-1v-.5a1 1 0 00-1-1h-4zM6 15a1 1 0 100 2h3a1 1 0 100-2H6z"/>
+                </svg>
+                <span>Remezclar</span>
+            </button>
+            
+        </div>
+        <!-- Botón de Cierre (X) -->
+        <button class="absolute top-2 right-2 text-white p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition" onclick="closeModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+    // Variables globales
+    const promptInput = document.getElementById('prompt-input');
+    const generateButton = document.getElementById('generate-button');
+    const imageContainer = document.getElementById('image-container');
+    const loader = document.getElementById('loader');
+    const messageBox = document.getElementById('message-box');
+    const fullscreenModal = document.getElementById('fullscreen-modal');
+    const modalImage = document.getElementById('modal-image');
+    const downloadButton = document.getElementById('download-button');
+    const remixButton = document.getElementById('remix-button');
+    
+    let lastPrompt = "";
+    let currentImageBase64 = ""; // Almacena la Base64 de la imagen seleccionada para 'Remezclar'
+    const MODEL_NAME = 'gemini-2.5-flash-image-preview'; // Usamos este modelo para image-to-image (Remezclar)
+
+    // Configuración de la API (DEJAR VACÍO - Canvas proporciona la clave en tiempo de ejecución)
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+    /**
+     * Maneja el estado de la UI durante la generación de imágenes.
+     * @param {boolean} isLoading - Si es true, muestra el loader y deshabilita el botón.
+     */
+    function setLoading(isLoading) {
+        generateButton.disabled = isLoading;
+        promptInput.disabled = isLoading;
+        loader.classList.toggle('hidden', !isLoading);
+        imageContainer.classList.add('hidden');
+        messageBox.classList.toggle('hidden', isLoading);
+        generateButton.textContent = isLoading ? 'Generando...' : 'Generar 4 Variaciones';
+    }
+
+    /**
+     * Muestra un mensaje de error o informativo.
+     * @param {string} message - El mensaje a mostrar.
+     * @param {boolean} isError - Si es true, aplica estilo de error.
+     */
+    function displayMessage(message, isError = false) {
+        messageBox.textContent = message;
+        messageBox.classList.remove('hidden', 'text-red-500', 'text-gray-500');
+        messageBox.classList.add(isError ? 'text-red-500' : 'text-gray-500');
+    }
+
+    /**
+     * Lógica de reintento con retroceso exponencial.
+     * @param {Function} fn - Función a ejecutar.
+     * @param {number} maxRetries - Número máximo de reintentos.
+     * @param {number} delay - Retraso inicial en ms.
+     */
+    async function fetchWithRetry(fn, maxRetries = 3, delay = 1000) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fn();
+                if (response.ok) return response;
+                
+                // Si el error es 429 (Rate Limit), reintentar
+                if (response.status === 429 && i < maxRetries - 1) {
+                    console.warn(`Intento ${i + 1} fallido (Status ${response.status}). Reintentando en ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Retroceso exponencial
+                    continue;
+                }
+                throw new Error(`Error en la API: ${response.statusText} (${response.status})`);
+            } catch (error) {
+                if (i === maxRetries - 1) throw error;
+                console.error(`Intento ${i + 1} fallido. Reintentando en ${delay}ms...`, error);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Retroceso exponencial
+            }
+        }
+        throw new Error("Límite de reintentos alcanzado.");
+    }
+
+    /**
+     * Genera imágenes llamando al modelo gemini-2.5-flash-image-preview.
+     * @param {string} prompt - El texto descriptivo.
+     * @param {string} [referenceImageBase64=""] - Imagen Base64 para el modo Remezclar.
+     */
+    async function generateImages(prompt, referenceImageBase64 = "") {
+        if (!prompt) {
+            displayMessage("Por favor, introduce una descripción para el fondo de pantalla.", true);
+            return;
+        }
+
+        setLoading(true);
+        lastPrompt = prompt;
+
+        try {
+            // Preparamos los 'parts' para la API
+            let contentsParts = [];
+            
+            // 1. Añadir la referencia de la imagen si estamos en modo Remezclar
+            if (referenceImageBase64) {
+                contentsParts.push({
+                    inlineData: {
+                        mimeType: "image/png", // Asumimos PNG
+                        data: referenceImageBase64.split(',')[1] // Quitamos el prefijo 'data:image/png;base64,'
+                    }
+                });
+                // Modificamos el prompt para guiar la generación image-to-image
+                const remixPrompt = `Remezcla y genera 4 variaciones del siguiente fondo de pantalla en un estilo ${prompt}. La imagen de referencia es el primer elemento de la entrada.`;
+                contentsParts.push({ text: remixPrompt });
+            } else {
+                // 2. Si es generación inicial, solo añadimos el texto
+                contentsParts.push({ text: prompt });
+            }
+
+            const payload = {
+                contents: [{ parts: contentsParts }],
+                generationConfig: {
+                    responseModalities: ["TEXT", "IMAGE"],
+                    // Parámetros adicionales para guiar al modelo para el formato de fondo de pantalla (9:16)
+                    imageGenerationConfig: {
+                        // Aunque la API puede ignorar el número exacto, pedimos 4 variaciones.
+                        sampleCount: 4, 
+                        // Le indicamos el formato 9:16 en el prompt, y el modelo lo interpretará.
+                    }
+                },
+                // System Instruction es clave para asegurar el formato y estilo
+                systemInstruction: {
+                    parts: [{ text: "Genera 4 imágenes de arte digital en alta calidad con un estricto aspecto vertical de 9:16 (fondo de pantalla móvil). La salida debe ser estéticamente agradable y optimizada para la pantalla de un teléfono." }]
+                }
+            };
+
+            const response = await fetchWithRetry(() => fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }));
+            
+            const result = await response.json();
+            
+            const candidates = result.candidates || [];
+            
+            // Limpiar el contenedor anterior
+            imageContainer.innerHTML = '';
+
+            let imageCount = 0;
+            let generatedImages = [];
+            
+            // Iterar sobre todos los candidates para encontrar las imágenes
+            for (const candidate of candidates) {
+                const imagePart = candidate.content?.parts?.find(p => p.inlineData && p.inlineData.mimeType.startsWith('image/'));
+                
+                if (imagePart) {
+                    const base64Data = imagePart.inlineData.data;
+                    const mimeType = imagePart.inlineData.mimeType;
+                    const imageUrl = `data:${mimeType};base64,${base64Data}`;
+
+                    generatedImages.push(imageUrl);
+                    imageCount++;
+                    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = imageUrl;
+                    imgElement.alt = `Fondo de pantalla generado: ${prompt}`;
+                    imgElement.className = 'wallpaper-item rounded-xl shadow-lg';
+                    // Evento para abrir el modal
+                    imgElement.onclick = () => openModal(imageUrl, prompt, base64Data);
+
+                    imageContainer.appendChild(imgElement);
+                }
+            }
+            
+            if (imageCount > 0) {
+                imageContainer.classList.remove('hidden');
+                displayMessage(`¡Generación completada! ${imageCount} imágenes listas. Toca una para verla en grande.`, false);
+            } else {
+                displayMessage("La API no devolvió imágenes válidas. Intenta con un prompt diferente.", true);
+            }
+
+        } catch (error) {
+            console.error("Error en la generación de imágenes:", error);
+            displayMessage(`Error al generar: ${error.message}. Verifica la consola para más detalles.`, true);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    /**
+     * Abre el modal de pantalla completa.
+     * @param {string} imageUrl - URL Base64 de la imagen.
+     * @param {string} prompt - El prompt original.
+     * @param {string} rawBase64 - La cadena Base64 cruda (sin el prefijo data:...).
+     */
+    function openModal(imageUrl, prompt, rawBase64) {
+        modalImage.src = imageUrl;
+        // Guardamos la info de la imagen para los botones de acción
+        currentImageBase64 = rawBase64;
+        lastPrompt = prompt;
+
+        fullscreenModal.classList.remove('hidden');
+        fullscreenModal.classList.add('flex');
+        document.body.style.overflow = 'hidden'; // Evita el scroll del cuerpo
+    }
+
+    /**
+     * Cierra el modal de pantalla completa.
+     * @param {Event} event - El evento click (opcional).
+     */
+    function closeModal(event) {
+        // Cierra el modal solo si se hace clic fuera de la imagen o en el botón de cierre
+        if (!event || event.target === fullscreenModal) {
+            fullscreenModal.classList.add('hidden');
+            fullscreenModal.classList.remove('flex');
+            document.body.style.overflow = 'auto'; // Restaura el scroll
+        }
+    }
+
+    /**
+     * Maneja la descarga de la imagen actualmente en el modal.
+     */
+    downloadButton.onclick = () => {
+        if (!currentImageBase64) return;
+        
+        const link = document.createElement('a');
+        link.href = currentImageBase64;
+        // Usamos el prompt como nombre de archivo para hacerlo descriptivo
+        const filename = lastPrompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `vivewall_${filename || 'wallpaper'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    /**
+     * Maneja la acción de Remezclar: precarga el prompt y la imagen, y llama a la generación.
+     */
+    remixButton.onclick = () => {
+        if (!currentImageBase64 || !lastPrompt) return;
+        
+        // 1. Cerrar el modal
+        closeModal();
+
+        // 2. Precargar el prompt original en el input
+        promptInput.value = lastPrompt;
+
+        // 3. Llamar a la función de generación en modo Remezclar
+        // El `currentImageBase64` contiene la imagen de referencia.
+        generateImages(lastPrompt, currentImageBase64);
+        
+        // Opcional: Mostrar mensaje de que se está remezclando
+        displayMessage("Remezclando la imagen seleccionada... ¡Prepara la siguiente tanda!", false);
+    };
+
+    // Event listener principal para la generación
+    generateButton.addEventListener('click', () => {
+        // Asegurarse de que no estamos en modo Remezclar si el usuario hace clic aquí
+        generateImages(promptInput.value.trim());
+    });
+    
+</script>
+
+
+</body>
+</html>
